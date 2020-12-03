@@ -93,6 +93,13 @@ cargo build
 cargo test
 ```
 
+Note that the WFA Makefile may require setting PIC with
+
+```patch
+-CC_FLAGS=-Wall -g
++CC_FLAGS=-Wall -g -fPIC
+```
+
 ### Build in a GNU Guix environment
 
 For instructions on building in a GNU Guix container see
