@@ -1,0 +1,15 @@
+# Start a guix container to build this tool
+#
+
+guix environment --network -C guix rust --ad-hoc gcc-toolchain clang nss-certs openssl vim which
+
+#
+# After startup you may need to set export CC=clang and the LIB path to point
+# to gcc and clang libs, e.g.
+#
+# . .guix-build
+# export CC=clang
+# export LIB_CLANGPATH=/gnu/store/w3nzdwg7fx6442qjfscds5va11znxi0b-clang-10.0.0/lib
+# cargo build
+
+

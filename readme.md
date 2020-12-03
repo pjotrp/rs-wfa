@@ -90,4 +90,11 @@ Make sure to clone with the WFA submodule:
 git clone --recursive https://github.com/chfi/wfa-rs
 cd wfa-rs
 cargo build
+cargo test
 ```
+
+### Build in a GNU Guix environment
+
+For instructions on building in a GNU Guix container see
+[.guix-build](./guix-build). Note you can use a container inside an
+Emacs shell.
