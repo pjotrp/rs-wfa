@@ -206,3 +206,69 @@ fn wavefronts_reduced_align() {
     let cg_str = std::str::from_utf8(&cigar).unwrap();
     assert_eq!("MMMXMMMMDMMMMMMMIMMMMMMMMMXMMMMMM", cg_str);
 }
+
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
+#[test]
+fn wavefronts_complete_align_sars2() -> Result<(), std::io::Error> {
+    let alloc = MMAllocator::new(BUFFER_SIZE_8M as u64);
+
+    let filen = "tests/data/20VR2012.fasta";
+    let file = File::open(filen)?;
+    let reader = BufReader::new(file);
+    let mut seqs1 = Vec::new();
+    for (index, line) in reader.lines().enumerate() {
+        let line = line.unwrap(); // Ignore errors.
+        // Show the line and its number.
+        println!("{}. {}", index + 1, line);
+        seqs1.push(line);
+    }
+    let seq1 = String::from(seqs1.join(""));
+
+    let filen = "tests/data/MT655751.1.fasta";
+    let file = File::open(filen)?;
+    let reader = BufReader::new(file);
+    let mut seqs2 = Vec::new();
+    for (index, line) in reader.lines().enumerate() {
+        let line = line.unwrap(); // Ignore errors.
+        // Show the line and its number.
+        println!("{}. {}", index + 1, line);
+        seqs2.push(line);
+    }
+    let seq2 = String::from(seqs2.join(""));
+    println!("{}", seq2);
+
+    let mut penalties = AffinePenalties {
+        match_: 0,
+        mismatch: 4,
+        gap_opening: 6,
+        gap_extension: 2,
+    };
+
+    let seq1_len = seq1.as_bytes().len();
+    let seq2_len = seq2.as_bytes().len();
+
+    let mut wavefronts = AffineWavefronts::new_complete(
+        seq1_len,
+        seq2_len,
+        &mut penalties,
+        &alloc,
+    );
+
+    let result = wavefronts.align(seq1.as_bytes(), seq2.as_bytes());
+    assert!(result.is_ok());
+
+    let score = wavefronts.edit_cigar_score(&mut penalties);
+    let cigar = wavefronts.cigar_bytes_raw();
+    let cg_str = std::str::from_utf8(&cigar).unwrap();
+    println!("{}", cg_str);
+    assert_eq!(score, -24);
+
+    assert_eq!("MMMXMMMMDMMMMMMMIMMMMMMMMMXMMMMMM", cg_str);
+
+    let cigar = wavefronts.cigar_bytes();
+    let cg_str = std::str::from_utf8(&cigar).unwrap();
+    assert_eq!("3M1X4M1D7M1I9M1X6M", cg_str);
+    Ok(())
+}
