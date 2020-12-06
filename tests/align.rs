@@ -213,55 +213,59 @@ use std::io::{BufRead, BufReader};
 #[test]
 fn wavefronts_complete_align_sars2() {
 
-    fn read_fasta(filen: &str) -> String {
-        BufReader::new(File::open(filen).unwrap())
-            .lines()
-            .filter_map(|readerline|
-                        {
-                            let line = readerline.unwrap();
-                            match &line[..1] {
-                                ">"|"#" => None,
-                                _       => Some(line)
-                            }
-                        }
-            )
-            .collect::<Vec<String>>()
-            .join("")
+    let fasta_seqs =
+        vec!["tests/data/20VR2012.fasta","tests/data/MT655751.1.fasta"]
+        .iter()
+        .map(|filen|
+             BufReader::new(File::open(filen).unwrap())
+             .lines()
+             .filter_map(|readerline|
+                         {
+                             let line = readerline.unwrap();
+                             match &line[..1] {
+                                 ">"|"#" => None,
+                                 _       => Some(line)
+                             }
+                         }
+             )
+             .collect::<Vec<String>>()
+             .join("")
+        )
+        .collect::<Vec<String>>();
+
+    if let [seq1, seq2] = &fasta_seqs[..] {
+
+        let seq1_len = seq1.as_bytes().len();
+        let seq2_len = seq2.as_bytes().len();
+        let alloc = MMAllocator::new(BUFFER_SIZE_8M as u64);
+
+        let mut penalties = AffinePenalties {
+            match_: 0,
+            mismatch: 4,
+            gap_opening: 6,
+            gap_extension: 2,
+        };
+
+        let mut wavefronts = AffineWavefronts::new_complete(
+            seq1_len,
+            seq2_len,
+            &mut penalties,
+            &alloc,
+        );
+
+        let result = wavefronts.align(seq1.as_bytes(), seq2.as_bytes());
+        assert!(result.is_ok());
+
+        let score = wavefronts.edit_cigar_score(&mut penalties);
+        let cigar = wavefronts.cigar_bytes_raw();
+        let cg_str = std::str::from_utf8(&cigar).unwrap();
+        println!("{}", cg_str);
+        assert_eq!(score, -1364);
+
+        assert_eq!("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM", &cg_str[80..160]);
+
+        let cigar = wavefronts.cigar_bytes();
+        let cg_str = std::str::from_utf8(&cigar).unwrap();
+        assert_eq!("54X1108M1X21161M218X4704M1X2589M67X", cg_str);
     }
-
-    let seq1 = read_fasta("tests/data/20VR2012.fasta");
-    let seq2 = read_fasta("tests/data/MT655751.1.fasta");
-    let seq1_len = seq1.as_bytes().len();
-    let seq2_len = seq2.as_bytes().len();
-
-    let alloc = MMAllocator::new(BUFFER_SIZE_8M as u64);
-
-    let mut penalties = AffinePenalties {
-        match_: 0,
-        mismatch: 4,
-        gap_opening: 6,
-        gap_extension: 2,
-    };
-
-    let mut wavefronts = AffineWavefronts::new_complete(
-        seq1_len,
-        seq2_len,
-        &mut penalties,
-        &alloc,
-    );
-
-    let result = wavefronts.align(seq1.as_bytes(), seq2.as_bytes());
-    assert!(result.is_ok());
-
-    let score = wavefronts.edit_cigar_score(&mut penalties);
-    let cigar = wavefronts.cigar_bytes_raw();
-    let cg_str = std::str::from_utf8(&cigar).unwrap();
-    println!("{}", cg_str);
-    assert_eq!(score, -1364);
-
-    assert_eq!("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM", &cg_str[80..160]);
-
-    let cigar = wavefronts.cigar_bytes();
-    let cg_str = std::str::from_utf8(&cigar).unwrap();
-    assert_eq!("54X1108M1X21161M218X4704M1X2589M67X", cg_str);
 }
